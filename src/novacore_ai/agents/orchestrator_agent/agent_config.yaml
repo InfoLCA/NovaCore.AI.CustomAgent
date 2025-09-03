@@ -1,0 +1,3 @@
+name: orchestrator_agent
+version: 0.1.0
+enabled: true
