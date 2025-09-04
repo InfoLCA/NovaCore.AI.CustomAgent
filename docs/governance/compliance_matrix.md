@@ -1,3 +1,8 @@
-# compliance_matrix
+# Compliance Matrix (Starter)
 
-_TODO: fill content._
+| Control           | Where Implemented                      |
+|-------------------|----------------------------------------|
+| SBOM & Signing    | `scripts/sbom-sign.sh`, CI workflow    |
+| Policy Enforcement| `security/policies/*.rego`             |
+| Audit Logging     | `infrastructure/security/audit_logger` |
+| Observability     | `monitoring/*`                         |
