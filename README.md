@@ -1,133 +1,223 @@
-# NovaCore.AI.CustomAgent
+NovaCore.AI.CustomAgent
 
-Scaffold initialized.
+A production-grade, microkernel AI agent platform with capability plug-ins, multi-agent compositions, and SRE-friendly ops (observability, security, CI/CD). This repo matches the original VelocityBrain reference design 1:1 (names adapted).
 
-Enterprise-grade, microkernel AI agent framework with capability plugins (reasoning, memory, execution, communication, audit) and production guardrails (SBOM, OIDC keyless signing, CI gates, OpenTelemetry stubs).
+Why this design
+	•	Microkernel core with stable interfaces (ports/adapters)
+	•	Capabilities as isolated, testable plug-ins (reasoning, memory, execution, communication, audit)
+	•	Agents as compositions of capabilities
+	•	Ops-ready: Docker, CI, observability (Grafana/Prometheus/Jaeger), SBOMs/attestations
+	•	Reproducible: Nix + pinned locks
+	•	Tests across unit/integration/e2e/perf/security
 
-## TL;DR (Get Running)
+⸻
 
-```bash
-# Local dev (requires Python 3.11+)
+Quickstart
+
+1) Local (Python)
+
+# Python 3.13 recommended
 python -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip
-pip install -r <(printf "")  # dependencies managed per-capability; add as you grow
+pip install -e ".[dev]"       # uses pyproject.toml
+pre-commit install            # formatting & linting on commit
 
-# Run API (via Docker, recommended)
-docker build -t novacore-ai:dev -f docker/Dockerfile .
-docker run -d --name novacore-api -e PYTHONPATH=/app/src -p 8000:8000 -v "$PWD/src:/app/src:ro" novacore-ai:dev
-curl -s http://127.0.0.1:8000/healthz
-
-Architecture
-	•	Microkernel core: src/novacore_ai/kernel/*
-	•	registry/ plugin discovery & lifecycle
-	•	interfaces/ typed contracts (capability/provider/telemetry)
-	•	event_bus/ async event model stubs
-	•	security/ auth & policy engine stubs (OPA-ready)
-	•	Capabilities (feature plugins): src/novacore_ai/capabilities/<cap>/
-	•	lib/ pure domain logic
-	•	contracts/ concrete implementation (ports/adapters)
-	•	config/ YAML schemas & defaults
-	•	tests/ unit tests colocated with code
-	•	Agents (composition layer): src/novacore_ai/agents/*
-	•	shared/ base agent, adapters
-	•	<specialist>_agent/ composes capabilities via YAML
-	•	Infrastructure adapters: src/novacore_ai/infrastructure/*
-	•	providers/ OpenAI/Anthropic/Mistral/Google stubs
-	•	storage/ vector/graph/blob adapters
-	•	telemetry/ OpenTelemetry config
-	•	security/ audit logger, crypto, key mgmt
-	•	API: src/novacore_ai/api.py (FastAPI)
-	•	/healthz liveness
-	•	/ping research agent demo
-
-Folder Tree (high-level)
-
-.
-├── docker/
-│   └── Dockerfile
-├── .github/
-│   ├── CODEOWNERS
-│   ├── workflows/
-│   │   ├── tests.yml
-│   │   ├── security-build.yml
-│   │   └── deploy.yml
-│   └── ISSUE_TEMPLATE/
-│       ├── bug_report.md
-│       └── feature_request.md
-├── src/novacore_ai/
-│   ├── api.py
-│   ├── kernel/{registry,interfaces,event_bus,security}
-│   ├── capabilities/{reasoning,memory,execution,communication,audit}/...
-│   ├── agents/{shared,research_agent,coding_agent,orchestrator_agent,guardian_agent}
-│   └── infrastructure/{providers,storage,telemetry,security}
-├── tests/...
-├── monitoring/{grafana,prometheus,jaeger}
-├── security/{policies,sboms,attestations}
-├── data/{raw,processed}      # DVC-ready
-├── models/trained            # DVC-ready
-├── pipelines/                # training/inference stubs
-├── CHANGELOG.md
-├── LICENSE (Apache-2.0)
-├── pyproject.toml
-├── flake.nix
-├── docker-compose.yml
-└── README.md
-
-CI / Security / Compliance
-	•	CI Tests: .github/workflows/tests.yml (pytest)
-	•	Supply Chain: .github/workflows/security-build.yml (Syft+Trivy SBOMs, cosign keyless via OIDC)
-	•	Container Release: .github/workflows/deploy.yml → ghcr.io/<org>/<repo>:latest
-	•	Governance: LICENSE, SECURITY.md, CODEOWNERS, PR/Issue templates, CHANGELOG.md
-	•	DVC/MLflow Ready: dvc init, .env → MLFLOW_TRACKING_URI=./mlruns
-
-Development
-	•	Run API locally (no Docker):
-
-source .venv/bin/activate
-uvicorn novacore_ai.api:app --host 0.0.0.0 --port 8000
-
-	•	Run tests:
-
+# sanity
 pytest -q
 
-	•	Pre-commit (black, ruff):
+2) Docker
 
-pre-commit run --all-files
+# build + run (app entrypoint controlled by src/novacore_ai/api.py or your launcher)
+docker build -t novacore-ai -f docker/Dockerfile .
+docker compose up -d          # see root docker-compose.yml
 
-Roadmap (near-term)
-	•	Makefile targets (make run / test / lint / docker-build)
-	•	Devcontainer for Codespaces
-	•	Capability wiring to real providers + tracing spans
-	•	E2E flows (agents orchestration) & benchmarks
-	•	Policy engine ↔ OPA integration
+3) Nix (reproducible env)
 
-Support
-
-See SECURITY.md for reporting, and use Issue templates for bugs/feature requests.
+# requires Nix flakes
+nix develop         # drops you into a dev shell with toolchain
+pytest -q
 
 
----
+⸻
 
-## How to Run
+Running tests
 
-### Local (venv)
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn novacore_ai.api:app --reload --port 8000
+# all tests
+pytest -q
 
-Docker
+# style & lint
+pre-commit run -a
 
-docker build -t novacore-ai:dev -f docker/Dockerfile .
-docker run -p 8000:8000 novacore-ai:dev
+# layers
+pytest tests/unit -q
+pytest tests/integration -q
+pytest tests/e2e -q
+pytest tests/security -q
+pytest tests/performance -q
 
-Tests
 
-pytest
+⸻
 
-All tests and style checks (Black, Ruff) also run automatically via pre-commit and CI.
----
+Repository structure (high-level)
 
-✅ With this, your repo has **domain-specific READMEs (kernel, capabilities, agents, infra, monitoring, security)** and a **root README with quick-start instructions** — exactly how FAANG-level teams onboard contributors.  
+.
+├── flake.nix / flake.lock           # Nix dev shell (pinned)
+├── pyproject.toml                   # packaging + deps (PEP 621)
+├── docker-compose.yml               # local orchestration
+├── docker/
+│   └── Dockerfile                   # multi-stage build
+├── .github/
+│   ├── CODEOWNERS
+│   ├── workflows/{tests,security-build,deploy}.yml
+│   ├── ISSUE_TEMPLATE/{bug_report,feature_request}.md
+│   └── pull_request_template.md
+├── src/novacore_ai/
+│   ├── api.py                       # lib/app entrypoint (lightweight)
+│   ├── kernel/                      # microkernel core
+│   ├── capabilities/                # plug-in capabilities
+│   ├── agents/                      # agent compositions
+│   ├── infrastructure/              # providers/storage/telemetry/security
+│   ├── shared/                      # utils, schemas, constants, exceptions
+│   └── README.md                    # src overview
+├── tests/                           # repo-level tests (unit/integration/e2e/perf/sec)
+├── configs/                         # dev/prod configs (agent & infra)
+├── docs/                            # architecture, deployment, governance, API
+├── monitoring/                      # grafana/prometheus/jaeger
+├── security/                        # policies, sboms, attestations
+├── pipelines/                       # training/inference orchestration stubs
+├── data/                            # DVC-ready (raw/processed)
+├── models/                          # DVC-ready (trained models)
+├── scripts/                         # dev-setup, security-scan, deploy, backup
+├── CHANGELOG.md / LICENSE / SECURITY.md
+└── README.md                        # (this file)
+
+
+⸻
+
+src/novacore_ai (what each part does)
+
+Kernel (microkernel)
+	•	interfaces/ — stable contracts:
+	•	capability_interface.py defines the Capability contract
+	•	agent_protocol.py, provider_interface.py, telemetry_interface.py
+	•	registry/ — discovery & lifecycle (plugin_registry.py, lifecycle_manager.py, dependency_resolver.py)
+	•	event_bus/ — async coordination (message_broker.py, event_handlers.py)
+	•	security/ — auth/policy engine (auth_manager.py, policy_engine.py)
+
+Capabilities (plug-ins)
+	•	Domains: reasoning/, memory/, execution/, communication/, audit/
+	•	Each has:
+	•	lib/ domain logic
+	•	contracts/ concrete implementation (e.g., *_capability.py)
+	•	config/ schema/yaml
+	•	tests/ co-located unit tests
+
+Agents (compositions)
+	•	shared/ base agent utilities (base_agent.py, adapters)
+	•	Agent types: research_agent/, coding_agent/, orchestrator_agent/, guardian_agent/
+	•	agent_config.yaml — declares capability set/wiring
+	•	deployment.yaml — K8s deployment manifest
+	•	tests/ — agent-level tests
+
+Infrastructure (adapters)
+	•	providers/ — OpenAI/Anthropic/Mistral/Google/local adapters
+	•	storage/ — vector/graph/blob adapters
+	•	telemetry/ — OTEL: metrics, traces, logs (otel-config.yaml lives here or in configs)
+	•	security/ — crypto/KMS/audit logger
+
+Shared (cross-cutting)
+	•	utils/ — config loader, validation, serialization
+	•	schemas/ — pydantic/dataclasses for agents/messages/config
+	•	constants/ — error codes, system limits
+	•	exceptions/ — typed exceptions
+
+⸻
+
+Configuration
+	•	configs/dev/*.yaml & configs/prod/*.yaml
+	•	agent_config.yaml — which capabilities, with what params
+	•	infrastructure_config.yaml — providers, storage, telemetry, keys
+	•	Use environment variables to point the app at the config set:
+
+export NOVACORE_ENV=dev   # or prod
+
+
+
+⸻
+
+Observability (monitoring/)
+	•	Grafana:
+	•	Dashboards: monitoring/grafana/dashboards/*.json
+	•	Datasource: monitoring/grafana/datasources/prometheus.yaml
+	•	Prometheus:
+	•	Rules/alerts: monitoring/prometheus/{rules,alerts}/*.yaml
+	•	Jaeger:
+	•	Tracing config: monitoring/jaeger/config.yaml
+
+Start with Docker Compose or your cluster’s observability stack. Ensure the app exports OTEL metrics/traces/logs (see infrastructure/telemetry/*).
+
+⸻
+
+Security (security/)
+	•	Policies: OPA/Gatekeeper (security/policies/*.rego)
+	•	SBOMs: security/sboms/{syft_sbom.json,trivy_sbom.json}
+	•	Attestations: security/attestations/cosign_signatures/
+	•	CI workflow security-build.yml performs SLSA-like build, SBOM, and signing.
+
+⸻
+
+Data & Models
+	•	data/{raw,processed} and models/trained are DVC-ready. Add .dvc tracking separately if you plan to sync artifacts to remote storage.
+
+⸻
+
+Pipelines
+	•	Stubs for training_pipeline.py, inference_pipeline.py, and helper scripts/.
+	•	Integrate with Prefect/Dagster/Airflow as needed.
+
+⸻
+
+CI/CD
+	•	.github/workflows/tests.yml — Lint, format, tests
+	•	.github/workflows/security-build.yml — SBOM, vuln scan, signatures
+	•	.github/workflows/deploy.yml — GitOps deployment hook
+
+⸻
+
+Developer scripts (scripts/)
+	•	dev-setup.sh — local bootstrap (tools, hooks)
+	•	security-scan.sh — SBOM + vuln scan
+	•	deploy.sh — CI/CD trigger or manual deploy helper
+	•	backup.sh — artifact backups (e.g., S3)
+
+⸻
+
+Versioning & releases
+	•	Semantic tags (e.g., v0.1.0) + changelog.
+	•	Use GitHub Releases; artifacts and SBOMs attach via CI.
+
+⸻
+
+Contributing
+	•	Run pre-commit run -a before pushing.
+	•	Add/extend tests under tests/ and co-located src/*/*/tests.
+	•	Keep domain logic in lib/, integration in contracts/.
+
+⸻
+
+License
+
+Apache-2.0 (see LICENSE).
+
+⸻
+
+Maintainers
+	•	CODEOWNERS define review boundaries. Open issues via templates under .github/ISSUE_TEMPLATE.
+
+⸻
+
+Appendix: Minimal run code-path
+	•	Entrypoint: src/novacore_ai/api.py
+	•	Loads env/config → kernel registry discovers capabilities → agents compose capabilities → OTEL exporters emit telemetry → policies enforced.
+
+⸻
 
