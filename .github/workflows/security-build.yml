@@ -1,0 +1,33 @@
+name: security-build
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  sbom-and-sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools (syft, trivy, cosign)
+        run: |
+          sudo apt-get update -y
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/sigstore/cosign/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Generate SBOMs
+        run: |
+          mkdir -p security/sboms
+          syft dir:. -o spdx-json > security/sboms/syft_repo.json
+          trivy fs --format spdx-json . > security/sboms/trivy_repo.json
+      - name: Keyless sign SBOMs (OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign-blob --yes security/sboms/syft_repo.json
+          cosign sign-blob --yes security/sboms/trivy_repo.json

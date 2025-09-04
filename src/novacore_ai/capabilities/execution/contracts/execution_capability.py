@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from ....kernel.interfaces.capability_interface import Capability
+from novacore_ai.kernel.interfaces.capability_interface import Capability
 
 
 class Impl(Capability):
