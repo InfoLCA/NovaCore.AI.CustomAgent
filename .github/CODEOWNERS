@@ -1,0 +1,18 @@
+# CODEOWNERS defines who reviews what
+# Pattern syntax: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner (fallback)
+*       @InfoLCA
+
+# Agents
+/src/novacore_ai/agents/        @InfoLCA
+
+# Capabilities
+/src/novacore_ai/capabilities/  @InfoLCA
+
+# Infrastructure + Kernel
+/src/novacore_ai/infrastructure/ @InfoLCA
+/src/novacore_ai/kernel/         @InfoLCA
+
+# CI/CD workflows
+/.github/workflows/              @InfoLCA
